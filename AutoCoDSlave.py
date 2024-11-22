@@ -13,6 +13,7 @@ from tkinter import TclError
 import requests
 import shutil
 import hashlib
+import webbrowser
 
 
 
@@ -26,6 +27,9 @@ db_path = os.path.join(config_dir, 'config_db')
 selection_path = os.path.join(config_dir, 'selection_db')
 button_click_status = None
 
+
+def open_project_url(event):
+    webbrowser.open("https://github.com/2eit/AutoCoDSlave")
 
 def is_ctrl_pressed():
     return ctypes.windll.user32.GetAsyncKeyState(0xA2) & 0x8000 != 0
@@ -157,8 +161,6 @@ def create_gui():
         config_keys['CoD21UAVKey'] = e4.get()
         config_keys['CoD20AllKey'] = e5.get()
         config_keys['CoD20UAVKey'] = e6.get()
-        set_config(config_paths, config_options, config_keys)
-        launch()
         set_config(config_paths, config_options, config_keys)
         popup.destroy()
         update_checkbuttons()
@@ -362,39 +364,69 @@ def create_gui():
         set_config(config_paths, config_options, config_keys)
 
     def check_selection_logic():
+        # 检查密钥的启用状态
+        cod21_all_configured = bool(config_keys['CoD21AllKey'])
+        cod21_uav_configured = bool(config_keys['CoD21UAVKey'])
+        cod20_all_configured = bool(config_keys['CoD20AllKey'])
+        cod20_uav_configured = bool(config_keys['CoD20UAVKey'])
+
+        # 根据密钥状态启用/禁用复选框
+        cb1.config(state='normal' if cod21_all_configured else 'disabled')
+        cb2.config(state='normal' if cod21_uav_configured else 'disabled')
+        cb3.config(state='normal' if cod20_all_configured else 'disabled')
+        cb4.config(state='normal' if cod20_uav_configured else 'disabled')
+        cb_xgp.config(state='normal' if config_paths['XGP_CoD_Path'] else 'disabled')
+        cb_steam.config(state='normal' if config_paths['Steam_CoD_Path'] else 'disabled')
+
+        # 复选框互斥逻辑
         if var1.get():
             cb2.config(state='disabled')
             cb3.config(state='disabled')
             cb4.config(state='disabled')
-        elif var2.get():
+
+        if var2.get():
             cb1.config(state='disabled')
             cb3.config(state='disabled')
             cb4.config(state='disabled')
-        elif var3.get():
-            cb1.config(state='disabled')
-            cb2.config(state='disabled')
-            cb4.config(state='normal')
-        elif var4.get():
-            cb1.config(state='disabled')
-            cb2.config(state='disabled')
-            cb3.config(state='normal')
-        else:
-            for cb, key in [(cb1, 'CoD21AllKey'), (cb2, 'CoD21UAVKey'), (cb3, 'CoD20AllKey'), (cb4, 'CoD20UAVKey')]:
-                if config_keys[key]:
-                    cb.config(state='normal')
-                else:
-                    cb.config(state='disabled')
 
-    def check_platform_logic(*args):
+        if var3.get():
+            cb1.config(state='disabled')
+            cb2.config(state='disabled')
+
+        if var4.get():
+            cb1.config(state='disabled')
+            cb2.config(state='disabled')
+
+        # 平台复选框相互禁用
         if var_xgp.get():
             cb_steam.config(state='disabled')
-        elif var_steam.get():
+        else:
+            cb_steam.config(state='normal' if config_paths['Steam_CoD_Path'] else 'disabled')
+
+        if var_steam.get():
             cb_xgp.config(state='disabled')
         else:
-            cb_xgp.config(state='normal')
-            cb_steam.config(state='normal')
+            cb_xgp.config(state='normal' if config_paths['XGP_CoD_Path'] else 'disabled')
+
+        # 按钮的启用/禁用逻辑
+        keys_selected = var1.get() or var2.get() or var3.get() or var4.get()
+        platform_selected = var_xgp.get() or var_steam.get()
+        rut_configured = bool(config_paths['RUT_Path'])
+        xgp_configured = bool(config_paths['XGP_CoD_Path'])
+        steam_configured = bool(config_paths['Steam_CoD_Path'])
+
+        btn_start_rut_and_cod.config(
+            state='normal' if keys_selected and platform_selected and rut_configured and (
+                    xgp_configured or steam_configured) else 'disabled'
+        )
+        btn_start_rut.config(state='normal' if keys_selected and rut_configured else 'disabled')
+        btn_start_cod_only.config(
+            state='normal' if platform_selected and (xgp_configured or steam_configured) else 'disabled'
+        )
+
+    def check_platform_logic(*args):
         save_selections()
-        save_lazy_mode()
+        check_selection_logic()
 
     def on_lazy_mode_check():
         if var_lazy_mode.get():
@@ -449,9 +481,15 @@ def create_gui():
             messagebox.showerror("更新失败", f"更新程序时出现错误: {e}\n{format_exc()}")
 
     tk.Button(root, text="配置密钥与地址", command=configure_keys_and_paths).pack(pady=20)
-    tk.Button(root, text="启动RUT并启动游戏", command=on_btn_start_rut_and_cod).pack(pady=20)
-    tk.Button(root, text="仅启动RUT", command=on_btn_start_rut).pack(pady=20)
-    tk.Button(root, text="我是绿玩😡(仅启动游戏)", command=on_btn_start_cod_only).pack(pady=20)
+    # 按钮的定义
+    btn_start_rut_and_cod = tk.Button(root, text="启动RUT并启动游戏", command=on_btn_start_rut_and_cod)
+    btn_start_rut = tk.Button(root, text="仅启动RUT", command=on_btn_start_rut)
+    btn_start_cod_only = tk.Button(root, text="我是绿玩😡(仅启动游戏)", command=on_btn_start_cod_only)
+
+    # 按钮的展示
+    btn_start_rut_and_cod.pack(pady=20)
+    btn_start_rut.pack(pady=20)
+    btn_start_cod_only.pack(pady=20)
 
     var1 = tk.IntVar()
     var2 = tk.IntVar()
@@ -470,9 +508,10 @@ def create_gui():
     cb4 = tk.Checkbutton(root, text="CoD20无限UAV", variable=var4,
                          command=lambda: (save_selections(), check_selection_logic()))
     cb_xgp = tk.Checkbutton(root, text="XGP平台", variable=var_xgp,
-                            command=lambda: (save_selections(), check_platform_logic()))
+                            command=lambda: (save_selections(), check_selection_logic()))
     cb_steam = tk.Checkbutton(root, text="Steam平台", variable=var_steam,
-                              command=lambda: (save_selections(), check_platform_logic()))
+                              command=lambda: (save_selections(), check_selection_logic()))
+
     cb_lazy_mode = tk.Checkbutton(root, text="懒人模式", variable=var_lazy_mode, command=on_lazy_mode_check)
     cb1.pack()
     cb2.pack()
@@ -481,10 +520,12 @@ def create_gui():
     cb_xgp.pack()
     cb_steam.pack()
     cb_lazy_mode.pack()
-    tk.Label(root, text="--by 怂呐(https://github.com/2eit/)", font=('TkDefaultFont', 8)).pack(side="right", anchor="se", padx=10, pady=10)
+    label = tk.Label(root, text="--by 2eit", font=('TkDefaultFont', 8), fg="blue", cursor="hand2")
+    label.pack(side="right", anchor="se", padx=10, pady=10)
+    label.bind("<Button-1>", open_project_url)
     update_label = tk.Label(root, text="点我更新", fg="blue", cursor="hand2", font=('TkDefaultFont', 10))
     update_label.pack(side=tk.BOTTOM, pady=20)
-    update_label.place(relx=0.5, rely=1.0, anchor='s')
+    update_label.place(relx=0.5, rely=0.95, anchor='s')
     update_label.bind("<Button-1>", lambda e: update_program())
 
 
@@ -492,28 +533,23 @@ def create_gui():
 
     def update_checkbuttons():
         selection_data = get_selection()
-        default_keys = {'CoD21AllKey': '', 'CoD21UAVKey': '', 'CoD20AllKey': '', 'CoD20UAVKey': ''}
-        for key in default_keys.keys():
+        for key in ['CoD21AllKey', 'CoD21UAVKey', 'CoD20AllKey', 'CoD20UAVKey']:
             if key not in config_keys:
-                config_keys[key] = default_keys[key]
-        for cb, key, var in [(cb1, 'CoD21AllKey', var1), (cb2, 'CoD21UAVKey', var2), (cb3,'CoD20AllKey', var3), (cb4, 'CoD20UAVKey', var4)]:
-            if config_keys[key]:
-                cb.config(state='normal')
-            else:
-                cb.config(state='disabled')
-            if key in selection_data:
-                var.set(selection_data[key])
-            else:
-                var.set(0)
-            check_selection_logic()
+                config_keys[key] = ''
 
+        for cb, key, var in [(cb1, 'CoD21AllKey', var1), (cb2, 'CoD21UAVKey', var2), (cb3, 'CoD20AllKey', var3),
+                             (cb4, 'CoD20UAVKey', var4)]:
+            state = 'normal' if config_keys[key] else 'disabled'
+            cb.config(state=state)
+            var.set(selection_data.get(key, 0))
+
+        check_selection_logic()
 
     def update_platform_checkbuttons():
         selection_data = get_selection()
         var_xgp.set(selection_data.get('XGP', 0))
         var_steam.set(selection_data.get('Steam', 0))
         check_platform_logic()
-
 
     update_checkbuttons()
     update_platform_checkbuttons()
