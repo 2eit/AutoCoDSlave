@@ -1,5 +1,6 @@
 # AutoCoDSlave
 A RUT autofill key program
+RUT自动填密钥
 
 
 # 右键属性-兼容性-以管理员身份运行
