@@ -25,7 +25,6 @@ if not os.path.exists(config_dir):
     ctypes.windll.kernel32.SetFileAttributesW(config_dir, FILE_ATTRIBUTE_HIDDEN)
 db_path = os.path.join(config_dir, 'config_db')
 selection_path = os.path.join(config_dir, 'selection_db')
-bat_path = os.path.join(script_dir, "update_program.bat")
 button_click_status = None
 
 
@@ -523,49 +522,42 @@ def create_gui():
 
     def update_program():
         try:
-            global script_dir  # 确保脚本目录被正确引用
+            global script_dir, config_dir
+            progress_window = tk.Tk()
+            progress_window.title("更新中")
+            tk.Label(progress_window, text="程序正在更新中，完成后将自动重启，请稍候...").pack(padx=10, pady=10)
+            progress_window.geometry("300x100")
+            progress_window.resizable(False, False)
+            progress_window.update()
 
             github_url = "https://github.com/2eit/AutoCoDSlave/releases/download/AutoCoDSlave-latest/AutoCoDSlave.exe"
-            download_path = os.path.join(script_dir, "new_program.exe")
-            script_path = sys.argv[0]
+            download_exe_path = os.path.join(config_dir, "AutoCoDSlave.exe")
+            current_exe_path = sys.argv[0]
 
-            # 下载文件
-            download_update(github_url, download_path)
+            # 如果存在旧的AutoCoDSlave.exe文件，则删除它
+            if os.path.exists(download_exe_path):
+                os.remove(download_exe_path)
+            download_update(github_url, download_exe_path)
 
-            # 计算当前程序文件和下载文件的哈希值
-            current_hash = calculate_hash(script_path)
-            new_hash = calculate_hash(download_path)
+            # 计算现有的和新的AutoCoDSlave.exe的哈希值
+            current_exe_hash = calculate_hash(current_exe_path)
+            new_exe_hash = calculate_hash(download_exe_path)
 
-            # 比较哈希值，不一致则更新
-            if current_hash != new_hash:
-                # 创建批处理文件内容
-                bat_path = os.path.join(script_dir, "update_program.bat")
-                bat_content = f"""
-                @echo off
-                taskkill /F /IM "{os.path.basename(sys.executable)}"
-                del "{script_path}"
-                move /Y "{download_path}" "{script_path}"
-                start "" "{script_path}"
-                del "%~f0"
-                """
-
-                # 写入批处理文件
-                with open(bat_path, "w") as bat_file:
-                    bat_file.write(bat_content.strip())
-                os.remove(download_path)
-
-                # 弹窗提示更新完成
-                if messagebox.showinfo("更新完成", "程序更新已完成。点击确定以重启应用程序。"):
-                    # 运行批处理文件并关闭自身
-                    os.startfile(bat_path)
-                    sys.exit()
-
+            # 如果哈希值不同，启动Update.exe
+            if current_exe_hash != new_exe_hash:
+                update_exe_path = os.path.join(config_dir, "Update.exe")
+                if os.path.exists(update_exe_path):
+                    os.remove(update_exe_path)
+                github_update_url = "https://github.com/2eit/AutoCoDSlave/releases/download/Update-v1.0/Update.exe"
+                download_update(github_update_url, update_exe_path)
+                os.execl(update_exe_path, update_exe_path)
             else:
-                os.remove(download_path)
-                messagebox.showinfo("已是最新版本", "当前程序已经是最新版本，不需要更新。")
+                messagebox.showinfo("更新检查", "已是最新版本，无需更新。")
 
         except Exception as e:
             messagebox.showerror("更新失败", f"更新程序时出现错误: {e}\n{format_exc()}")
+        finally:
+            progress_window.destroy()
 
 
     root.geometry('500x400')
