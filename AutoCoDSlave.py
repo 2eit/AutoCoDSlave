@@ -553,6 +553,7 @@ def create_gui():
                 os.execl(update_exe_path, update_exe_path)
             else:
                 messagebox.showinfo("更新检查", "已是最新版本，无需更新。")
+                os.remove(download_exe_path)
 
         except Exception as e:
             messagebox.showerror("更新失败", f"更新程序时出现错误: {e}\n{format_exc()}")
