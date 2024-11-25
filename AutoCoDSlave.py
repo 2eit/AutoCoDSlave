@@ -548,7 +548,7 @@ def create_gui():
                 update_exe_path = os.path.join(config_dir, "Update.exe")
                 if os.path.exists(update_exe_path):
                     os.remove(update_exe_path)
-                github_update_url = "https://github.com/2eit/AutoCoDSlave/releases/download/Update-v1.0/Update.exe"
+                github_update_url = "https://github.com/2eit/AutoCoDSlave/releases/download/Update-latest/Update.exe"
                 download_update(github_update_url, update_exe_path)
                 os.execl(update_exe_path, update_exe_path)
             else:
